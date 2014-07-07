@@ -87,6 +87,7 @@ static NSString * MIMETypeForExtension(NSString * extension) {
 
     if (self.delivered >= self.length)
     {
+//		DebugLog(@"[PKMultipartElement read:maxLength:%lld] no more bytes", (long long)len);
         return 0;
     }
     if (self.delivered < self.headersLength && sent < len)
@@ -115,6 +116,7 @@ static NSString * MIMETypeForExtension(NSString * extension) {
         *(buffer + sent) = '\n';
         sent ++; self.delivered ++;
     }
+//	DebugLog(@"[PKMultipartElement read:maxLength:%lld] sent %lld bytes", (long long)len, (long long)sent);
     return sent;
 }
 @end
@@ -197,6 +199,7 @@ static NSString * MIMETypeForExtension(NSString * extension) {
         sent           += read;
         self.delivered += read;
     }
+	DebugLog(@"[PKMultipartInputStream read:maxLength:%lld] sent %lld bytes (delivered %lld of %lld)", (long long)len, (long long)sent, (long long)self.delivered, (long long)self.length);
     return sent;
 }
 - (BOOL)hasBytesAvailable
