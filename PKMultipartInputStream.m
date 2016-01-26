@@ -59,6 +59,16 @@ static NSString * MIMETypeForExtension(NSString * extension) {
     [self updateLength];
     return self;
 }
+- (id)initWithName:(NSString *)name boundary:(NSString *)boundary data:(NSData *)data contentType:(NSString *)contentType filename:(NSString*)filename
+{
+    self               = [super init];
+    self.headers       = [[NSString stringWithFormat:kHeaderPathFormat, boundary, name, filename, contentType] dataUsingEncoding:NSUTF8StringEncoding];
+    self.headersLength = [self.headers length];
+    self.body          = [NSInputStream inputStreamWithData:data];
+    self.bodyLength    = [data length];
+    [self updateLength];
+    return self;
+}
 - (id)initWithName:(NSString *)name filename:(NSString *)filename boundary:(NSString *)boundary path:(NSString *)path
 {
     if (!filename)
@@ -130,6 +140,7 @@ static NSString * MIMETypeForExtension(NSString * extension) {
 @end
 
 @implementation PKMultipartInputStream
+@synthesize delegate;
 - (void)updateLength
 {
     self.length = self.footer.length + [[self.parts valueForKeyPath:@"@sum.length"] unsignedIntegerValue];
@@ -161,12 +172,16 @@ static NSString * MIMETypeForExtension(NSString * extension) {
     [self.parts addObject:[[PKMultipartElement alloc] initWithName:name boundary:self.boundary data:data contentType:type]];
     [self updateLength];
 }
+- (void)addPartWithName:(NSString *)name filename:(NSString*)filename data:(NSData *)data contentType:(NSString *)type
+{
+    [self.parts addObject:[[PKMultipartElement alloc] initWithName:name boundary:self.boundary data:data contentType:type filename:filename]];
+    [self updateLength];
+}
 - (void)addPartWithName:(NSString *)name path:(NSString *)path
 {
     [self.parts addObject:[[PKMultipartElement alloc] initWithName:name filename:nil boundary:self.boundary path:path]];
     [self updateLength];
 }
-
 - (void)addPartWithName:(NSString *)name filename:(NSString *)filename path:(NSString *)path
 {
     [self.parts addObject:[[PKMultipartElement alloc] initWithName:name filename:filename boundary:self.boundary path:path]];
@@ -224,4 +239,5 @@ static NSString * MIMETypeForExtension(NSString * extension) {
 }
 - (void)_scheduleInCFRunLoop:(NSRunLoop *)runLoop forMode:(id)mode {}
 - (void)_setCFClientFlags:(CFOptionFlags)flags callback:(CFReadStreamClientCallBack)callback context:(CFStreamClientContext)context {}
+- (void)removeFromRunLoop:(__unused NSRunLoop *)aRunLoop forMode:(__unused NSString *)mode {}
 @end
