@@ -243,7 +243,7 @@ static NSString * MIMETypeForExtension(NSString * extension) {
 
 
 // this fixes crash on iOS 10:
-- (nullable id)propertyForKey:(NSStreamPropertyKey)key {
+- (nullable id)propertyForKey:(NSString *)key {
 	// not sure what to return here.
 	// when using super implementation, iOS 10 crashes (method not implemented in abstract superclass)
 	return nil;
