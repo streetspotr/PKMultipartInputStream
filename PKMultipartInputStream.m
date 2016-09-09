@@ -240,4 +240,13 @@ static NSString * MIMETypeForExtension(NSString * extension) {
 - (void)_scheduleInCFRunLoop:(NSRunLoop *)runLoop forMode:(id)mode {}
 - (void)_setCFClientFlags:(CFOptionFlags)flags callback:(CFReadStreamClientCallBack)callback context:(CFStreamClientContext)context {}
 - (void)removeFromRunLoop:(__unused NSRunLoop *)aRunLoop forMode:(__unused NSString *)mode {}
+
+
+// this fixes crash on iOS 10:
+- (nullable id)propertyForKey:(NSStreamPropertyKey)key {
+	// not sure what to return here.
+	// when using super implementation, iOS 10 crashes (method not implemented in abstract superclass)
+	return nil;
+}
+
 @end
