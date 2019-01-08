@@ -71,33 +71,93 @@ static NSString * MIMETypeForExtension(NSString * extension) {
 }
 - (id)initWithName:(NSString *)name filename:(NSString *)filename boundary:(NSString *)boundary path:(NSString *)path
 {
-    if (!filename)
-    {
-        filename = path.lastPathComponent;
+    return [self initWithName:name filename:filename boundary:boundary path:path contentType:MIMETypeForExtension(path.pathExtension)];
+}
+- (id)initWithName:(NSString *)name filename:(NSString *)filename boundary:(NSString *)boundary path:(NSString *)path contentType:(NSString *)contentType
+{
+    self = [super init];
+    if (self) {
+        if (!filename)
+        {
+            filename = path.lastPathComponent;
+        }
+        self.headers       = [[NSString stringWithFormat:kHeaderPathFormat, boundary, name, filename, contentType] dataUsingEncoding:NSUTF8StringEncoding];
+        self.headersLength = [self.headers length];
+        self.body          = [NSInputStream inputStreamWithFileAtPath:path];
+        self.bodyLength    = [[[[NSFileManager defaultManager] attributesOfItemAtPath:path error:NULL] objectForKey:NSFileSize] unsignedIntegerValue];
+        [self updateLength];
     }
-    self.headers       = [[NSString stringWithFormat:kHeaderPathFormat, boundary, name, filename, MIMETypeForExtension(path.pathExtension)] dataUsingEncoding:NSUTF8StringEncoding];
-    self.headersLength = [self.headers length];
-    self.body          = [NSInputStream inputStreamWithFileAtPath:path];
-    self.bodyLength    = [[[[NSFileManager defaultManager] attributesOfItemAtPath:path error:NULL] objectForKey:NSFileSize] unsignedIntegerValue];
-    [self updateLength];
     return self;
 }
 - (id)initWithName:(NSString *)name filename:(NSString *)filename boundary:(NSString *)boundary stream:(NSInputStream *)stream streamLength:(NSUInteger)streamLength
 {
-    self.headers       = [[NSString stringWithFormat:kHeaderPathFormat, boundary, name, filename, MIMETypeForExtension(filename.pathExtension)] dataUsingEncoding:NSUTF8StringEncoding];
-    self.headersLength = [self.headers length];
-    self.body          = stream;
-    self.bodyLength    = streamLength;
-    [self updateLength];
+    self = [super init];
+    if (self) {
+        self.headers       = [[NSString stringWithFormat:kHeaderPathFormat, boundary, name, filename, MIMETypeForExtension(filename.pathExtension)] dataUsingEncoding:NSUTF8StringEncoding];
+        self.headersLength = [self.headers length];
+        self.body          = stream;
+        self.bodyLength    = streamLength;
+        [self updateLength];
+    }
     return self;
 }
+- (id)initWithHeaders:(NSDictionary *)headers string:(NSString *)string boundary:(NSString *)boundary
+{
+    self = [super init];
+    if (self) {
+        
+        _headers = [self makeHeadersDataFromHeadersDict:headers boundary:boundary];
+        _headersLength = _headers.length;
+        NSData *stringData = [string dataUsingEncoding:NSUTF8StringEncoding];
+        _body = [NSInputStream inputStreamWithData:stringData];
+        _bodyLength = stringData.length;
+        [self updateLength];
+    }
+    return self;
+}
+
+- (id)initWithHeaders:(NSDictionary *)headers path:(NSString *)path boundary:(NSString *)boundary
+{
+    self = [super init];
+    if (self) {
+        
+        _headers = [self makeHeadersDataFromHeadersDict:headers boundary:boundary];
+        _headersLength = _headers.length;
+        _body = [NSInputStream inputStreamWithFileAtPath:path];
+        _bodyLength = [[[[NSFileManager defaultManager] attributesOfItemAtPath:path error:NULL] objectForKey:NSFileSize] unsignedIntegerValue];
+        [self updateLength];
+    }
+    return self;
+}
+
+- (NSData *)makeHeadersDataFromHeadersDict:(NSDictionary *)headers boundary:(NSString *)boundary
+{
+    NSMutableString *headersString = [[NSMutableString alloc] initWithFormat:@"--%@", boundary];
+    [self appendNewLine:headersString];
+    
+    for (NSString *key in headers.allKeys) {
+        
+        [headersString appendString:[[NSString alloc] initWithFormat:@"%@: %@", key, headers[key]]];
+        [self appendNewLine:headersString];
+    }
+    
+    [self appendNewLine:headersString];
+    
+    NSData *result = [headersString dataUsingEncoding:NSUTF8StringEncoding];
+    return result;
+}
+
+- (void)appendNewLine:(NSMutableString *)string {
+    
+    [string appendString:@"\r\n"];
+}
+
 - (NSUInteger)read:(uint8_t *)buffer maxLength:(NSUInteger)len
 {
     NSUInteger sent = 0, read;
 
     if (self.delivered >= self.length)
     {
-//		DebugLog(@"[PKMultipartElement read:maxLength:%lld] no more bytes", (long long)len);
         return 0;
     }
     if (self.delivered < self.headersLength && sent < len)
@@ -126,14 +186,13 @@ static NSString * MIMETypeForExtension(NSString * extension) {
         *(buffer + sent) = '\n';
         sent ++; self.delivered ++;
     }
-//	DebugLog(@"[PKMultipartElement read:maxLength:%lld] sent %lld bytes", (long long)len, (long long)sent);
     return sent;
 }
 @end
 
 @interface PKMultipartInputStream()
 @property (nonatomic, strong) NSMutableArray *parts;
-@property (nonatomic, strong) NSString *boundary;
+@property (nonatomic, strong, nonnull) NSString *boundary;
 @property (nonatomic, strong) NSData *footer;
 @property (nonatomic) NSUInteger currentPart, delivered, length;
 @property (nonatomic) NSStreamStatus status;
@@ -187,11 +246,29 @@ static NSString * MIMETypeForExtension(NSString * extension) {
     [self.parts addObject:[[PKMultipartElement alloc] initWithName:name filename:filename boundary:self.boundary path:path]];
     [self updateLength];
 }
+- (void)addPartWithName:(NSString *)name filename:(NSString *)filename path:(NSString *)path contentType:(NSString *)type
+{
+    [self.parts addObject:[[PKMultipartElement alloc] initWithName:name filename:filename boundary:self.boundary path:path contentType:type]];
+    [self updateLength];
+}
 - (void)addPartWithName:(NSString *)name filename:(NSString *)filename stream:(NSInputStream *)stream streamLength:(NSUInteger)streamLength
 {
     [self.parts addObject:[[PKMultipartElement alloc] initWithName:name filename:filename boundary:self.boundary stream:stream streamLength:streamLength]];
     [self updateLength];
 }
+
+- (void)addPartWithHeaders:(NSDictionary *)headers string:(NSString *)string
+{
+    [self.parts addObject:[[PKMultipartElement alloc] initWithHeaders:headers string:string boundary:self.boundary]];
+    [self updateLength];
+}
+
+- (void)addPartWithHeaders:(NSDictionary *)headers path:(NSString *)path
+{
+    [self.parts addObject:[[PKMultipartElement alloc] initWithHeaders:headers path:path boundary:self.boundary]];
+    [self updateLength];
+}
+
 - (NSInteger)read:(uint8_t *)buffer maxLength:(NSUInteger)len
 {
     NSUInteger sent = 0, read;
@@ -214,7 +291,6 @@ static NSString * MIMETypeForExtension(NSString * extension) {
         sent           += read;
         self.delivered += read;
     }
-	DebugLog(@"[PKMultipartInputStream read:maxLength:%lld] sent %lld bytes (delivered %lld of %lld)", (long long)len, (long long)sent, (long long)self.delivered, (long long)self.length);
     return sent;
 }
 - (BOOL)hasBytesAvailable
@@ -240,13 +316,11 @@ static NSString * MIMETypeForExtension(NSString * extension) {
 - (void)_scheduleInCFRunLoop:(NSRunLoop *)runLoop forMode:(id)mode {}
 - (void)_setCFClientFlags:(CFOptionFlags)flags callback:(CFReadStreamClientCallBack)callback context:(CFStreamClientContext)context {}
 - (void)removeFromRunLoop:(__unused NSRunLoop *)aRunLoop forMode:(__unused NSString *)mode {}
-
-
-// this fixes crash on iOS 10:
-- (nullable id)propertyForKey:(NSString *)key {
-	// not sure what to return here.
-	// when using super implementation, iOS 10 crashes (method not implemented in abstract superclass)
-	return nil;
+- (id)propertyForKey:(NSStreamPropertyKey)key {
+    return nil;
 }
 
+- (BOOL)setProperty:(id)property forKey:(NSStreamPropertyKey)key {
+    return NO;
+}
 @end
