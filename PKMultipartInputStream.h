@@ -4,16 +4,16 @@
 #import <Foundation/Foundation.h>
 
 @interface PKMultipartInputStream : NSInputStream
-- (void)addPartWithName:(NSString *)name string:(NSString *)string;
-- (void)addPartWithName:(NSString *)name data:(NSData *)data;
-- (void)addPartWithName:(NSString *)name data:(NSData *)data contentType:(NSString *)type;
-- (void)addPartWithName:(NSString *)name filename:(NSString*)filename data:(NSData *)data contentType:(NSString *)type;
-- (void)addPartWithName:(NSString *)name path:(NSString *)path;
-- (void)addPartWithName:(NSString *)name filename:(NSString *)filename path:(NSString *)path;
-- (void)addPartWithName:(NSString *)name filename:(NSString *)filename path:(NSString *)path contentType:(NSString *)type;
-- (void)addPartWithName:(NSString *)name filename:(NSString *)filename stream:(NSInputStream *)stream streamLength:(NSUInteger)streamLength;
-- (void)addPartWithHeaders:(NSDictionary *)headers string:(NSString *)string;
-- (void)addPartWithHeaders:(NSDictionary *)headers path:(NSString *)path;
+- (void)addPartWithName:(NSString *_Nonnull)name string:(NSString *_Nonnull)string;
+- (void)addPartWithName:(NSString *_Nonnull)name data:(NSData *_Nonnull)data;
+- (void)addPartWithName:(NSString *_Nonnull)name data:(NSData *_Nonnull)data contentType:(NSString *_Nonnull)type;
+- (void)addPartWithName:(NSString *_Nonnull)name filename:(NSString*_Nonnull)filename data:(NSData *_Nonnull)data contentType:(NSString *_Nonnull)type;
+- (void)addPartWithName:(NSString *_Nonnull)name path:(NSString *_Nonnull)path;
+- (void)addPartWithName:(NSString *_Nonnull)name filename:(NSString *_Nonnull)filename path:(NSString *_Nonnull)path;
+- (void)addPartWithName:(NSString *_Nonnull)name filename:(NSString *_Nonnull)filename path:(NSString *_Nonnull)path contentType:(NSString *_Nonnull)type;
+- (void)addPartWithName:(NSString *_Nonnull)name filename:(NSString *_Nonnull)filename stream:(NSInputStream *_Nonnull)stream streamLength:(NSUInteger)streamLength;
+- (void)addPartWithHeaders:(NSDictionary *_Nonnull)headers string:(NSString *_Nonnull)string;
+- (void)addPartWithHeaders:(NSDictionary *_Nonnull)headers path:(NSString *_Nonnull)path;
 
 @property (nonatomic, readonly, nonnull) NSString *boundary;
 @property (nonatomic, readonly) NSUInteger length;
